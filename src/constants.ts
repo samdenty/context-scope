@@ -11,7 +11,7 @@ export const NO_SCOPE =
   `(whilst evaluating a getter on \`context.value\`)`
 
 export const UNINITIALISED_SCOPE =
-  `The parent context scope was unitialized!\n` +
+  `The parent context scope was uninitialized!\n` +
   `As \`initialValue\` was not specified, you need to\n` +
   `manually call \`scope.set\` before attempting to reference it's value\n\n` +
   `(whilst evaluating a getter on \`context.value\`)`
