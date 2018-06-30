@@ -120,8 +120,8 @@ class Context<
       }
     }
 
-    if (throwOnNoScope && (scopes.length === 0 || (wasUninitialized || !initial)))
-      this.error((wasUninitialized || !initial) ? UNINITIALIZED_SCOPE : NO_SCOPE)
+    if (throwOnNoScope && (scopes.length === 0 || (wasUninitialized && !initial)))
+      this.error(scopes.length === 0 ? NO_SCOPE : UNINITIALIZED_SCOPE)
 
     return { scope: false, value: this.options.initialValue }
   }
