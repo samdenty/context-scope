@@ -1,6 +1,6 @@
 {
   "name": "context-scope",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Context (yes context) support for Javascript / Typescript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
