@@ -3,7 +3,7 @@ import {
   SCOPE,
   SCOPE_DESTROYED,
   SCOPE_DESTROYED_METHOD,
-  UNINITIALISED_SCOPE,
+  UNINITIALIZED_SCOPE,
 } from './constants'
 import defaultHandlers from './defaultHandlers'
 import Scope from './scope'
@@ -108,20 +108,20 @@ class Context<
     const initial = 'initialValue' in this.options
     const scopes = this.getScopes()
 
-    let wasUnitialized = false
+    let wasUninitialized = false
     for (const id of scopes) {
       const scope = this.contextScopes[id]
       if (scope) {
         if (!scope.initialized) {
-          wasUnitialized = true
+          wasUninitialized = true
           break
         }
         return { scope: id, value: scope.value }
       }
     }
 
-    if (throwOnNoScope && (scopes.length === 0 || wasUnitialized))
-      this.error(wasUnitialized ? UNINITIALISED_SCOPE : NO_SCOPE)
+    if (throwOnNoScope && (scopes.length === 0 || (wasUninitialized || !initial)))
+      this.error((wasUninitialized || !initial) ? UNINITIALIZED_SCOPE : NO_SCOPE)
 
     return { scope: false, value: this.options.initialValue }
   }
