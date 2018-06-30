@@ -1,6 +1,6 @@
 # context-scope
 
-Context support for Javascript / Typescript. Side effects free. Create a `scope` and all functions called from within it will have access to it.
+Context support for Javascript / Typescript. Side effects free. Create a `scope` and all functions called from within it will have access to it. Use multiple context's at the same time with inherited scopes.
 
 ## Getting started
 
@@ -194,5 +194,37 @@ context.scope(scope => {
   const { id } = scope // 0
 
   context.destroy(id)
+})
+```
+
+## Examples
+
+### Inheriting values
+
+
+```ts
+import Context from 'context-scope'
+
+const context = new Context<number>()
+
+function b() {
+  console.log(context.value)
+}
+
+function a() {
+  context.scope(scope => {
+    scope.set(value => (value + 1))
+    b()
+  })
+}
+
+context.scope(scope => {
+  scope.set(0)
+
+  console.log(context.value) // 0
+
+  a() // 1
+
+  b() // 0
 })
 ```
