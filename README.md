@@ -228,3 +228,43 @@ context.scope(scope => {
   b() // 0
 })
 ```
+
+### Multiple contexts
+
+```ts
+import Context from 'context-scope'
+
+const cat = new Context<string>()
+const dog = new Context<string>()
+
+function test() {
+  console.log(cat.value, dog.value) // 'Cat' 'Dog'
+}
+
+cat.scope(feline => {
+  feline.set('Cat')
+  dog.scope(doggie => {
+    doggie.set('Dog')
+    test()
+  })
+})
+```
+
+### Return values from scopes
+
+```ts
+import Context from 'context-scope'
+
+const context = new Context<string>()
+
+async function main() {
+  const result = await context.scope(scope => new Promise((resolve) => {
+    scope.set('test')
+    setTimeout(() => resolve(scope.value), 1000)
+  }))
+
+  console.log(result) // 'test'
+}
+
+main()
+```
