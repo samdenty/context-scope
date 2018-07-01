@@ -10,7 +10,7 @@ export const wrap = (...args) =>
 export const escapeRegex = (...regex: any[]) =>
   regex.join(SEPARATOR).replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')
 
-export const getStackTraces = () => {
+export const getTrace = (): string => {
   const Trace = Error as any
 
   const original = Trace.stackTraceLimit
@@ -19,6 +19,10 @@ export const getStackTraces = () => {
   const { stack } = new Trace()
   Trace.stackTraceLimit = original
 
+  return stack
+}
+
+export const parseTrace = (stack: string): string[] => {
   const [, ...traces] = stack.split('\n')
   return traces
 }

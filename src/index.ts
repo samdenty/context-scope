@@ -1,32 +1,37 @@
+import memoizeOne from 'memoize-one'
+
 import {
   NO_SCOPE,
   SCOPE,
   SCOPE_DESTROYED,
   SCOPE_DESTROYED_METHOD,
-  UNINITIALIZED_SCOPE,
+  UNINITIALIZED_SCOPE
 } from './constants'
 import defaultHandlers from './defaultHandlers'
 import Scope from './scope'
-import { escapeRegex, getStackTraces, SEPARATOR, wrap } from './util'
-
-let instances = 0
+import { escapeRegex, getTrace, parseTrace, SEPARATOR, wrap } from './util'
 
 export type Handler<Value> = (prevValue: Value) => (...args) => Value
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
+
 type HandlerMethods<Handler extends any> = {
   [key in keyof Handler]: ReturnType<Handler[key]>
 }
-type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
+
+type ID = number
 
 interface ContextScope {
   value: any
   initialized: boolean
 }
 
+let instances = 0
 class Context<
   Value extends any,
   CustomHandlers = { [key: string]: Handler<Value> }
 > {
-  private contextScopes: ContextScope[] = []
+  private scopes: ContextScope[] = []
+  public getScope = (id: ID) => this.scopes[id]
 
   private instance = ++instances
   private regex = new RegExp(
@@ -41,76 +46,74 @@ class Context<
       customHandlers?: CustomHandlers
       strictMode?: boolean
     } = {} as any
-  ) {
-    // this.register(defaultHandlers)
-  }
+  ) {}
 
-  scope<
+  public scope<
     Handlers extends HandlerMethods<
       CustomHandlers & Omit<typeof defaultHandlers, 'set'>
     >,
     CurrentScope extends {
       set: ((newValue: Value | (((prevValue: Value) => Value))) => Value)
-      id: number
+      id: ID
       value: Value
       destroy: () => void
     } & Handlers,
     Callback extends (scope: CurrentScope) => any
   >(callback: Callback): ReturnType<Callback> {
-    const id =
-      this.contextScopes.push({
-        value: undefined,
-        initialized: false
-      }) - 1
-
-    const controller = new Scope(id, this.getValue(false).value)
+    const id = this.scopes.push({ value: undefined, initialized: false }) - 1
+    const controller = new Scope(this.getValue(false).value)
 
     controller.onChange = (value, method) => {
-      const scope = this.contextScopes[id]
-      if (scope) {
-        scope.initialized = true
-        scope.value = value
-        return
-      }
+      const scope = this.getScope(id)
+      if (!scope)
+        return this.error(
+          `${SCOPE_DESTROYED(id)}${
+            method ? SCOPE_DESTROYED_METHOD(method) : ''
+          }`
+        )
 
-      this.error(
-        `${SCOPE_DESTROYED(id)}${method ? SCOPE_DESTROYED_METHOD(method) : ''}`
-      )
+      scope.initialized = true
+      scope.value = value
     }
 
     const scope: CurrentScope = {
+      id,
       get value() {
         return controller.value
       },
-      id: controller.id,
-      destroy: () => this.destroy(scope.id),
+      destroy: () => this.destroy(id),
       ...controller.handleMethods({
         ...(this.options.customHandlers as any),
         ...defaultHandlers
       })
     }
 
-    const wrapper = wrap(SCOPE, this.instance, controller.id)
+    const wrapper = wrap(SCOPE, this.instance, id)
     const result = wrapper.call(callback, scope)
 
     return result
   }
 
-  private error(message: string) {
-    if (this.options.strictMode !== false) {
-      throw new Error(message)
-    }
-
-    console.warn('[context-scope]', message)
+  public get value() {
+    return this.getValue().value
   }
 
-  getValue(throwOnNoScope = true): { value: Value; scope: number | false } {
+  public destroy(id: ID) {
+    delete this.scopes[id]
+  }
+
+  public getScopes() {
+    const trace = getTrace()
+    return this.getScopesFromTrace(trace)
+  }
+
+  public getValue(throwOnNoScope = true): { value: Value; scope: ID | false } {
     const initial = 'initialValue' in this.options
     const scopes = this.getScopes()
 
     let wasUninitialized = false
     for (const id of scopes) {
-      const scope = this.contextScopes[id]
+      const scope = this.getScope(id)
       if (scope) {
         if (!scope.initialized) {
           wasUninitialized = true
@@ -120,21 +123,18 @@ class Context<
       }
     }
 
-    if (throwOnNoScope && (scopes.length === 0 || (wasUninitialized && !initial)))
+    if (
+      throwOnNoScope &&
+      (scopes.length === 0 || (wasUninitialized && !initial))
+    )
       this.error(scopes.length === 0 ? NO_SCOPE : UNINITIALIZED_SCOPE)
 
     return { scope: false, value: this.options.initialValue }
   }
 
-  getScope = (id: number) => this.contextScopes[id]
-
-  get value() {
-    return this.getValue().value
-  }
-
-  getScopes() {
-    const traces = getStackTraces()
-    const scopes: number[] = []
+  private getScopesFromTrace: (trace: string) => ID[] = memoizeOne(trace => {
+    const traces = parseTrace(trace)
+    const scopes: ID[] = []
 
     for (const trace of traces) {
       const match = trace.match(this.regex)
@@ -148,10 +148,14 @@ class Context<
     }
 
     return scopes
-  }
+  })
 
-  destroy(id: number) {
-    delete this.contextScopes[id]
+  private error(message: string) {
+    if (this.options.strictMode !== false) {
+      throw new Error(message)
+    }
+
+    console.warn('[context-scope]', message)
   }
 }
 

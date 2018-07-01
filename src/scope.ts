@@ -4,7 +4,7 @@ class Scope<Value extends any> {
   private $value: Value
   public onChange: (value, method?: string) => void
 
-  constructor(public readonly id: number, value: Value) {
+  constructor(value: Value) {
     if (typeof value !== 'undefined') this.value = value
   }
 
